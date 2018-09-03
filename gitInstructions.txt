@@ -1,0 +1,40 @@
+# Initialize git for folder Mytest
+git init Mytest
+
+# Add files (sample.c) to git for version control
+git add smaple.c
+
+# Commit changes to git
+git commit -m "some_message"
+
+# Connect local repository to github
+git remote add origin https://github.com/user_name/Mytest.git
+
+# Push changes in local repository to github
+git push origin master
+
+# List current tracking items in git
+git ls-files
+
+
+# Fetch from upstream repository
+git fetch upstream
+
+# Checkout local master branch
+git checkout master
+
+# Merge the changes from upstream/master with local/master
+git merge upstream/master
+
+# If your local branch didn't have any unique commits, Git will instead perform a "fast-forward"
+
+
+
+# List the current configured remote repository for your fork.
+git remote -v
+
+# Specify a new remote upstream repository that will be synced with the fork.
+git remote add upstream https://github.com/ORIGINAL_OWNER/ORIGINAL_REPOSITORY.git
+
+# Verify the new upstream repository you've specified for your fork.
+git remote -v
