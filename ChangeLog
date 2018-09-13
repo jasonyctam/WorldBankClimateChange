@@ -1,3 +1,8 @@
+2018-09-13 jasonyctam@gmail.com
+ - Added Linear regression and Random Forest for prediction
+ - Added FitFunctions.py
+ - Added some plotting methods in plotAnalysis.py
+
 2018-09-05 jasonyctam@gmail.com
  - Added Code/countryTypeDict.txt to help categorize the entries under 'Country Name' into single or group of contries
  - Added getCountryTypeCol and modified getCSVDF in Code/DFFunctions.py to categorize the entries under 'Country Name'

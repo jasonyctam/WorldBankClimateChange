@@ -26,19 +26,15 @@ class DFFunctions():
 ###################################################################
 ###################################################################
 
-    def getCSVDF(self, csv, skiprow=0, filter=False):
+    def getCSVDF(self, csv, skiprow=0):
 
         ## This function loads the csv files into dataframes, and converts the values in the respective time columns into datetime formats
 
         ## lists timeCol and timeFormat must have the same length
 
         outDF = pd.read_csv(csv, skiprows=skiprow)
-
-        if (filter==True):
-            outDF = self.getCountryTypeCol(outDF)
-            outDF = outDF[outDF['CountryType']=='Country']
-            outDF = outDF.reset_index()
-        
+        outDF = self.getCountryTypeCol(outDF)
+       
         return outDF
 
 ###################################################################
@@ -51,6 +47,26 @@ class DFFunctions():
         outDF = inDF.copy()
 
         outDF['CountryType'] = outDF['Country Name'].map(self.countryTypeDict)
+
+        return outDF
+
+###################################################################
+###################################################################
+
+
+    def setupAnalysisDF(self, inDF, filter=True, countryType='Country'):
+
+        ## This function loads the csv files into dataframes, and converts the values in the respective time columns into datetime formats
+
+        outDF = inDF.copy()
+
+        if (filter==True):
+            outDF = outDF[outDF['CountryType']==countryType]
+
+        outDF = outDF.dropna()
+        outDF = outDF.reset_index()
+        outDF = outDF.drop('index', axis=1)
+        # outDF = outDF.set_index('Country')
 
         return outDF
 

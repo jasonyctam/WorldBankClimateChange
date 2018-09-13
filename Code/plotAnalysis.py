@@ -93,23 +93,77 @@ class plotAnalysis():
 ###################################################################
 ###################################################################
 
-    def plotPairsDF(self, df, title="", xlabel="", ylabel="", legendLabel1="", outputFileName="", xLabelSize=25):
-
+    def plotTargetGraph(self, x1, y1, title="", xlabel="", ylabel="", legendLabel1="", outputFileName="", xLabelSize=25, tilt=False, xTickRotation=0, time=True):
+        
         fig, ax = plt.subplots(figsize=(self.figWidth, self.figHeight))
-
+        
         ax.set_title(title, fontsize=xLabelSize)
         ax.set_xlabel(xlabel, fontsize=xLabelSize)
         ax.set_ylabel(ylabel, fontsize=xLabelSize)
+        
+        if (time==True):
+            ax.plot(x1,y1, label=legendLabel1, lw=self.linewidth)
+        else:
+            ax.scatter(x1, y1, label=legendLabel1)
+
+        ax.legend(loc='upper right', prop={'size': xLabelSize-10}, shadow=True, frameon=True)
+        ax.tick_params(axis='both', which='major', labelsize=xLabelSize)
+            
+        if tilt:
+            for tick in ax.get_xticklabels():
+                tick.set_rotation(xTickRotation)
+
+        if len(outputFileName) > 0:
+            plt.savefig(self.outDir+outputFileName)
+
+        return
+
+###################################################################
+###################################################################
+
+    def plotResultGraph(self, x1, y1, title="", xlabel="", ylabel="", legendLabel=[""], outputFileName="", xLabelSize=25, tilt=False, xTickRotation=0):
+        
+        fig, ax = plt.subplots(figsize=(self.figWidth, self.figHeight))
+        
+        ax.set_title(title, fontsize=xLabelSize)
+        ax.set_xlabel(xlabel, fontsize=xLabelSize)
+        ax.set_ylabel(ylabel, fontsize=xLabelSize)
+
+        for i in range(0,len(y1)):
+            ax.scatter(x1, y1[i], label=legendLabel[i])
+
+        ax.legend(loc='upper right', prop={'size': xLabelSize-10}, shadow=True, frameon=True)
+        ax.tick_params(axis='both', which='major', labelsize=xLabelSize)
+            
+        if tilt:
+            for tick in ax.get_xticklabels():
+                tick.set_rotation(xTickRotation)
+
+        if len(outputFileName) > 0:
+            plt.savefig(self.outDir+outputFileName)
+
+        return
+
+###################################################################
+###################################################################
+
+    def plotPairsDF(self, df, title="", xlabel="", ylabel="", legendLabel1="", outputFileName="", xLabelSize=25):
+
+        # fig, ax = plt.subplots(figsize=(self.figWidth, self.figHeight))
+
+        # ax.set_title(title, fontsize=xLabelSize)
+        # ax.set_xlabel(xlabel, fontsize=xLabelSize)
+        # ax.set_ylabel(ylabel, fontsize=xLabelSize)
         
         # sns.pairplot(df)
         pd.plotting.scatter_matrix(df, marker='o',
                                  hist_kwds={'bins': 20}, s=60, alpha=.8)
 
-        ax.legend(loc='upper right', prop={'size': xLabelSize-10}, shadow=True, frameon=True)
-        ax.tick_params(axis='both', which='major', labelsize=xLabelSize)
+        # ax.legend(loc='upper right', prop={'size': xLabelSize-10}, shadow=True, frameon=True)
+        # ax.tick_params(axis='both', which='major', labelsize=xLabelSize)
             
-        if len(outputFileName) > 0:
-            plt.savefig(self.outDir+outputFileName)
+        # if len(outputFileName) > 0:
+        #     plt.savefig(self.outDir+outputFileName)
 
         return
 
