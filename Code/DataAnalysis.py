@@ -14,6 +14,9 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
 
+from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPRegressor
+
 
 ###################################################################
 ###################################################################
@@ -118,91 +121,13 @@ class DataAnalysis():
 
         ### Random Forest
 
-        ## Fine tune hyperparameters with Randomized Search
-
-        # Number of trees in random forest
-        n_estimators = [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
-
-        # Number of features to consider at every split
-        max_features = ['auto', 'sqrt']
-
-        # Maximum number of levels in tree
-        max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
-        max_depth.append(None)
-
-        # Minimum number of samples required to split a node
-        min_samples_split = [2, 4, 6, 8, 10, 12]
-
-        # Minimum number of samples required at each leaf node
-        min_samples_leaf = [1, 2, 3, 4, 5]
-
-        # Method of selecting samples for training each tree
-        bootstrap = [True, False]
-
-        # Create the random grid
-        random_grid = {'n_estimators': n_estimators,
-                    'max_features': max_features,
-                    'max_depth': max_depth,
-                    'min_samples_split': min_samples_split,
-                    'min_samples_leaf': min_samples_leaf,
-                    'bootstrap': bootstrap}
-
-        rf_random = self.FitFunc.FitRandomForest(paramGrid=random_grid, train_predictors=train_predictors, train_target=train_target)
-
-        base_model = self.FitFunc.FitRandomForest(train_predictors=train_predictors, train_target=train_target)
-        base_accuracy = self.FitFunc.evaluate(base_model, test_predictors, test_target.values.ravel())
-
-        best_random = rf_random.best_estimator_
-        random_accuracy = self.FitFunc.evaluate(best_random, test_predictors, test_target.values.ravel())
-
-        print('Improvement of {:0.2f}%.'.format( 100 * (random_accuracy - base_accuracy) / base_accuracy))
-
-        ## Fine tune hyperparameters with Grid Search
-
-        # Create the parameter grid based on the results of random search 
-        # param_grid = {
-        #     'bootstrap': [True],
-        #     'max_depth': [80, 90, 100, 110],
-        #     'max_features': [2, 3],
-        #     'min_samples_leaf': [3, 4, 5],
-        #     'min_samples_split': [8, 10, 12],
-        #     'n_estimators': [100, 200, 300, 1000]
-        # }
-
-        param_grid = {
-            'n_estimators': [400, 600, 800, 1000, 1200],
-            'max_features': ['auto'],
-            'min_samples_split': [8, 10, 12],
-            'min_samples_leaf': [1, 2, 3],
-            'max_depth': [60, 70, 80, 90, 100],
-            'bootstrap': [False]
-        }
-
-        # # Create a based model
-        # rf = RandomForestRegressor()
-        # # Instantiate the grid search model
-        # grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, n_jobs = -1, verbose = 2)
-
-        # # Fit the grid search to the data
-        # grid_search.fit(train_predictors, train_target.values.ravel())
-
-        grid_search = self.FitFunc.FitRandomForest(paramGrid=param_grid, train_predictors=train_predictors, train_target=train_target, searchType="Grid")
-
-        # grid_search.best_params_
-        # {'bootstrap': True,
-        # 'max_depth': 80,
-        # 'max_features': 3,
-        # 'min_samples_leaf': 5,
-        # 'min_samples_split': 12,
-        # 'n_estimators': 100}
-        best_grid = grid_search.best_estimator_
-        grid_accuracy = self.FitFunc.evaluate(best_grid, test_predictors, test_target.values.ravel())
-
-        print('Improvement of {:0.2f}%.'.format( 100 * (grid_accuracy - base_accuracy) / base_accuracy))
+        # self.FitRandomForest(train_predictors, test_predictors, train_target, test_target)
 
         # rf = best_grid
 
         # ### Neural Network
+
+        # self.FitNeuralNetwork(train_predictors, test_predictors, train_target, test_target)
 
         # ### Ensemble Decision Trees
 
@@ -261,12 +186,130 @@ class DataAnalysis():
 
         # self.plotData.plotBarGraph(self.GDP_DF['Country Name'], self.GDP_DF['2017'], title="GDP 2017", xlabel="Country", ylabel="GDP", legendLabel1="GDP 2017", outputFileName="GDP_2017.png", tilt=self.tiltBool, xTickRotation=self.rotation)
 
+        landForest_DF = self.landForest_DF[self.landForest_DF['CountryType']=='Country'].copy()
+        atmosphereCO2_DF = self.atmosphereCO2_DF[self.atmosphereCO2_DF['CountryType']=='Country'].copy()
+        GDP_DF = self.GDP_DF[self.GDP_DF['CountryType']=='Country'].copy()
+        populationTotal_DF = self.populationTotal_DF[self.populationTotal_DF['CountryType']=='Country'].copy()
+        populationUrban_DF = self.populationUrban_DF[self.populationUrban_DF['CountryType']=='Country'].copy()
+
+        ###################################################################
+
+        self.plotData.plotBarGraph(landForest_DF['Country Name'], landForest_DF['2013'], title="Land Forest 2013", xlabel="Country", ylabel="Land Forest", legendLabel1="Land Forest 2013", outputFileName="LandForest_2013.png", tilt=self.tiltBool, xTickRotation=self.rotation)
+
+        self.plotData.plotBarGraph(atmosphereCO2_DF['Country Name'], atmosphereCO2_DF['2013'], title="CO2 2013", xlabel="Country", ylabel="CO2", legendLabel1="CO2 2013", outputFileName="CO2_2013.png", tilt=self.tiltBool, xTickRotation=self.rotation)
+
+        self.plotData.plotBarGraph(GDP_DF['Country Name'], GDP_DF['2013'], title="GDP 2013", xlabel="Country", ylabel="GDP", legendLabel1="GDP 2013", outputFileName="GDP_2013.png", tilt=self.tiltBool, xTickRotation=self.rotation)
+
+        self.plotData.plotBarGraph(populationTotal_DF['Country Name'], populationTotal_DF['2013'], title="Total Population 2013", xlabel="Country", ylabel="Total Population", legendLabel1="Total population 2013", outputFileName="populationTotal_2013.png", tilt=self.tiltBool, xTickRotation=self.rotation)
+
+        self.plotData.plotBarGraph(populationUrban_DF['Country Name'], populationUrban_DF['2013'], title="Urban Population 2013", xlabel="Country", ylabel="Urban Population", legendLabel1="Urban Population 2013", outputFileName="populationUrban_2013.png", tilt=self.tiltBool, xTickRotation=self.rotation)
+
+        ###################################################################
+
+        # self.plotData.plotBarGraph(landForest_DF['Country Name'], landForest_DF['2013'], title="Land Forest 2013", xlabel="Country", ylabel="Land Forest", legendLabel1="Land Forest 2013", outputFileName="LandForest_2013_bottom.png", tilt=self.tiltBool, xTickRotation=self.rotation, bottom=True)
+
+        # self.plotData.plotBarGraph(atmosphereCO2_DF['Country Name'], atmosphereCO2_DF['2013'], title="CO2 2013", xlabel="Country", ylabel="CO2", legendLabel1="CO2 2013", outputFileName="CO2_2013_bottom.png", tilt=self.tiltBool, xTickRotation=self.rotation, bottom=True)
+
+        # self.plotData.plotBarGraph(GDP_DF['Country Name'], GDP_DF['2013'], title="GDP 2013", xlabel="Country", ylabel="GDP", legendLabel1="GDP 2013", outputFileName="GDP_2013_bottom.png", tilt=self.tiltBool, xTickRotation=self.rotation, bottom=True)
+
+        # self.plotData.plotBarGraph(populationTotal_DF['Country Name'], populationTotal_DF['2013'], title="Total Population 2013", xlabel="Country", ylabel="Total Population", legendLabel1="Total population 2013", outputFileName="populationTotal_2013_bottom.png", tilt=self.tiltBool, xTickRotation=self.rotation, bottom=True)
+
+        # self.plotData.plotBarGraph(populationUrban_DF['Country Name'], populationUrban_DF['2013'], title="Urban Population 2013", xlabel="Country", ylabel="Urban Population", legendLabel1="Urban Population 2013", outputFileName="populationUrban_2013_bottom.png", tilt=self.tiltBool, xTickRotation=self.rotation, bottom=True)
+
         plt.show()
 
         return
 
 ###################################################################
 ###################################################################
+
+    def FitNeuralNetwork(self, train_predictors, test_predictors, train_target, test_target):
+
+        scaler = StandardScaler()
+        # Fit only to the training data
+        scaler.fit(train_predictors)
+
+        # Now apply the transformations to the data:
+        # train_predictors = scaler.transform(train_predictors)
+        # test_predictors = scaler.transform(test_predictors)
+
+        # mlp = MLPRegressor(hidden_layer_sizes=(30,30,30))
+        # mlp = MLPRegressor()
+        # mlp.fit(train_predictors,train_target.values.ravel())
+
+        mlp = self.FitFunc.FitNeuralNetwork(train_predictors=train_predictors, train_target=train_target, searchType="Random")
+
+        NN_accuracy = self.FitFunc.evaluate(mlp, test_predictors, test_target.values.ravel())
+
+        return
+
+###################################################################
+###################################################################
+
+    def FitRandomForest(self, train_predictors, test_predictors, train_target, test_target):
+
+        ## Fine tune hyperparameters with Randomized Search
+
+        # Number of trees in random forest
+        n_estimators = [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
+
+        # Number of features to consider at every split
+        max_features = ['auto', 'sqrt']
+
+        # Maximum number of levels in tree
+        max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
+        max_depth.append(None)
+
+        # Minimum number of samples required to split a node
+        min_samples_split = [2, 4, 6, 8, 10, 12]
+
+        # Minimum number of samples required at each leaf node
+        min_samples_leaf = [1, 2, 3, 4, 5]
+
+        # Method of selecting samples for training each tree
+        bootstrap = [True, False]
+
+        # Create the random grid
+        random_grid = {'n_estimators': n_estimators,
+                    'max_features': max_features,
+                    'max_depth': max_depth,
+                    'min_samples_split': min_samples_split,
+                    'min_samples_leaf': min_samples_leaf,
+                    'bootstrap': bootstrap}
+
+        rf_random = self.FitFunc.FitRandomForest(paramGrid=random_grid, train_predictors=train_predictors, train_target=train_target)
+
+        base_model = self.FitFunc.FitRandomForest(train_predictors=train_predictors, train_target=train_target)
+        base_accuracy = self.FitFunc.evaluate(base_model, test_predictors, test_target.values.ravel())
+
+        best_random = rf_random.best_estimator_
+        random_accuracy = self.FitFunc.evaluate(best_random, test_predictors, test_target.values.ravel())
+
+        print('Improvement of {:0.2f}%.'.format( 100 * (random_accuracy - base_accuracy) / base_accuracy))
+
+        ## Fine tune hyperparameters with Grid Search
+
+        param_grid = {
+            'n_estimators': [400, 600, 800, 1000, 1200],
+            'max_features': ['auto'],
+            'min_samples_split': [8, 10, 12],
+            'min_samples_leaf': [1, 2, 3],
+            'max_depth': [60, 70, 80, 90, 100],
+            'bootstrap': [False]
+        }
+
+        grid_search = self.FitFunc.FitRandomForest(paramGrid=param_grid, train_predictors=train_predictors, train_target=train_target, searchType="Grid")
+        best_grid = grid_search.best_estimator_
+        grid_accuracy = self.FitFunc.evaluate(best_grid, test_predictors, test_target.values.ravel())
+
+        print('Improvement of {:0.2f}%.'.format( 100 * (grid_accuracy - base_accuracy) / base_accuracy))
+
+        return
+
+###################################################################
+###################################################################
+
+
 
 if __name__ == "__main__":
 

@@ -34,7 +34,7 @@ class plotAnalysis():
 ###################################################################
 ###################################################################
 
-    def plotBarGraph(self, x1, y1, title="", xlabel="", ylabel="", legendLabel1="", outputFileName="", xLabelSize=25, tilt=False, xTickRotation=0, top=20):
+    def plotBarGraph(self, x1, y1, title="", xlabel="", ylabel="", legendLabel1="", outputFileName="", xLabelSize=25, tilt=False, xTickRotation=0, top=20, bottom=False):
         
         fig, ax = plt.subplots(figsize=(self.figWidth, self.figHeight))
             
@@ -45,11 +45,14 @@ class plotAnalysis():
         tempDF = pd.DataFrame({'Country':x1, 'Data':y1})
         tempDF.sort_values("Data", inplace=True, ascending=False)
         tempDF = tempDF.reset_index()
-        tempDF = tempDF[:top]
+        if bottom==False:
+            tempDF = tempDF[:top]
+        else:
+            tempDF = tempDF[-1*top:]
 
         ax.bar(tempDF['Country'].values, tempDF['Data'], width=1, label=legendLabel1)
         ax.legend(loc='upper right', prop={'size': xLabelSize-10}, shadow=True, frameon=True)
-        ax.tick_params(axis='both', which='major', labelsize=xLabelSize)
+        ax.tick_params(axis='both', which='major', labelsize=xLabelSize-15)
         if tilt:
             fig.autofmt_xdate(rotation=xTickRotation)
             

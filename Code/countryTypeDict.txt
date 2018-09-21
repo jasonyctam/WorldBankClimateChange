@@ -131,7 +131,7 @@
 "Liberia":"Country",
 "Libya":"Country",
 "St. Lucia":"Country",
-"Latin America & Caribbean":"Country",
+"Latin America & Caribbean":"Group",
 "Least developed countries: UN classification":"Group",
 "Low income":"Group",
 "Liechtenstein":"Country",

@@ -11,6 +11,10 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
 
+from scipy import stats
+from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPRegressor
+
 ###################################################################
 ###################################################################
 ###################################################################
@@ -76,6 +80,46 @@ class FitFunctions():
             print(rf_model.best_params_)
         
         return rf_model
+
+###################################################################
+###################################################################
+
+    def FitNeuralNetwork(self, train_predictors, train_target, searchType = "Random"):
+        
+        # Use the random grid to search for best hyperparameters
+        # First create the base model to tune
+        # rf = RandomForestRegressor(random_state=42)
+        mlp = MLPRegressor()
+
+        if (searchType=="Random"):
+
+            # Random search of parameters, using 3 fold cross validation, 
+            # search across 100 different combinations, and use all available cores
+            # rf_model = RandomizedSearchCV(estimator = rf, param_distributions = paramGrid, n_iter = 100, cv = 3, verbose=1, n_jobs = -1)
+            model = RandomizedSearchCV(mlp, param_distributions={
+                    # 'learning_rate': stats.uniform(0.001, 0.05)})#,
+                    # 'hidden0__units': stats.randint(4, 12),
+                    # 'hidden0__type': ["Rectifier", "Sigmoid", "Tanh"]})
+                    'learning_rate': ['constant', 'invscaling', 'adaptive']})
+
+        else:
+
+            # # Instantiate the grid search model
+            # rf_model = GridSearchCV(estimator = rf, param_grid = paramGrid, cv = 3, n_jobs = -1, verbose = 1)
+            model = GridSearchCV(mlp, param_grid={
+                'learning_rate': [0.05, 0.01, 0.005, 0.001],
+                'hidden0__units': [4, 8, 12],
+                'hidden0__type': ["Rectifier", "Sigmoid", "Tanh"]})
+
+        # Fit the random search model
+        model.fit(train_predictors, train_target.values.ravel())
+
+        # if (bool(paramGrid)==True):
+
+        print("Model best parameters:")
+        print(model.best_params_)
+        
+        return model
 
 ###################################################################
 ###################################################################
