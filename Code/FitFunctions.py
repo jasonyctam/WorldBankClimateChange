@@ -11,6 +11,9 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
 
+from sklearn import ensemble
+from sklearn.ensemble import GradientBoostingRegressor
+
 from scipy import stats
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPRegressor
@@ -41,6 +44,7 @@ class FitFunctions():
         accuracy = 100 - mape
         print('Model Performance')
         print('Average Error: {:0.4f}.'.format(np.mean(errors)))
+        print('MAPE: {:0.4f}.'.format(mape))
         print('Accuracy = {:0.2f}%.'.format(accuracy))
         
         return accuracy
@@ -64,12 +68,13 @@ class FitFunctions():
 
                 # Random search of parameters, using 3 fold cross validation, 
                 # search across 100 different combinations, and use all available cores
-                rf_model = RandomizedSearchCV(estimator = rf, param_distributions = paramGrid, n_iter = 100, cv = 3, verbose=1, n_jobs = -1)
+                print ('Performing Random Search of hyper parameters for Random Forest...')
+                rf_model = RandomizedSearchCV(estimator = rf, param_distributions = paramGrid)#, n_iter = 100, cv = 3, verbose=1, n_jobs = -1)
 
             else:
-
+                print ('Performing Grid Search of hyper parameters for Random Forest...')
                 # # Instantiate the grid search model
-                rf_model = GridSearchCV(estimator = rf, param_grid = paramGrid, cv = 3, n_jobs = -1, verbose = 1)
+                rf_model = GridSearchCV(estimator = rf, param_grid = paramGrid)#, cv = 3, n_jobs = -1, verbose = 1)
 
         # Fit the random search model
         rf_model.fit(train_predictors, train_target.values.ravel())
@@ -84,42 +89,40 @@ class FitFunctions():
 ###################################################################
 ###################################################################
 
-    def FitNeuralNetwork(self, train_predictors, train_target, searchType = "Random"):
+    def FitGradientBoostedTree(self, train_predictors, train_target, paramGrid={}, searchType = "Random"):
         
-        # Use the random grid to search for best hyperparameters
-        # First create the base model to tune
-        # rf = RandomForestRegressor(random_state=42)
-        mlp = MLPRegressor()
+        if (bool(paramGrid)==False):
 
-        if (searchType=="Random"):
-
-            # Random search of parameters, using 3 fold cross validation, 
-            # search across 100 different combinations, and use all available cores
-            # rf_model = RandomizedSearchCV(estimator = rf, param_distributions = paramGrid, n_iter = 100, cv = 3, verbose=1, n_jobs = -1)
-            model = RandomizedSearchCV(mlp, param_distributions={
-                    # 'learning_rate': stats.uniform(0.001, 0.05)})#,
-                    # 'hidden0__units': stats.randint(4, 12),
-                    # 'hidden0__type': ["Rectifier", "Sigmoid", "Tanh"]})
-                    'learning_rate': ['constant', 'invscaling', 'adaptive']})
+            gbt_model = GradientBoostingRegressor(random_state=42)
 
         else:
 
-            # # Instantiate the grid search model
-            # rf_model = GridSearchCV(estimator = rf, param_grid = paramGrid, cv = 3, n_jobs = -1, verbose = 1)
-            model = GridSearchCV(mlp, param_grid={
-                'learning_rate': [0.05, 0.01, 0.005, 0.001],
-                'hidden0__units': [4, 8, 12],
-                'hidden0__type': ["Rectifier", "Sigmoid", "Tanh"]})
+            # Use the random grid to search for best hyperparameters
+            # First create the base model to tune
+            gbt = GradientBoostingRegressor(random_state=42)
+
+            if (searchType=="Random"):
+
+                # Random search of parameters, using 3 fold cross validation, 
+                # search across 100 different combinations, and use all available cores
+                print ('Performing Random Search of hyper parameters for Gradient Boosted Tree...')
+                gbt_model = RandomizedSearchCV(estimator = gbt, param_distributions = paramGrid, n_iter = 100, cv = 3, verbose=1, n_jobs = -1)
+
+            else:
+
+                print ('Performing Grid Search of hyper parameters for Random Forest...')
+                # # Instantiate the grid search model
+                gbt_model = GridSearchCV(estimator = gbt, param_grid = paramGrid, cv = 3, n_jobs = -1, verbose = 1)
 
         # Fit the random search model
-        model.fit(train_predictors, train_target.values.ravel())
+        gbt_model.fit(train_predictors, train_target.values.ravel())
 
-        # if (bool(paramGrid)==True):
+        if (bool(paramGrid)==True):
 
-        print("Model best parameters:")
-        print(model.best_params_)
+            print("Model best parameters:")
+            print(gbt_model.best_params_)
         
-        return model
+        return gbt_model
 
 ###################################################################
 ###################################################################
