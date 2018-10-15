@@ -150,8 +150,10 @@ class DataAnalysis():
         print('Intercept: \n', regressor.intercept_)
         print('Coefficients: \n', regressor.coef_)
 
+        print('Linear Regression R squared (train)": %.4f' % regressor.score(train_predictors, train_target))
+
         y_pred = regressor.predict(test_predictors)
-        print('Linear Regression R squared": %.4f' % regressor.score(test_predictors, test_target))
+        print('Linear Regression R squared (test)": %.4f' % regressor.score(test_predictors, test_target))
 
         lin_mse = mean_squared_error(y_pred, test_target)
         lin_rmse = np.sqrt(lin_mse)
@@ -187,7 +189,7 @@ class DataAnalysis():
         dt_max_leaf_nodes_array = [36]
         dt_min_samples_leaf_array = [1]
 
-        dt_results_array = [] # minInstancesPerNode, maxDepth, maxBins, rmse
+        dt_results_array = [] # min_samples_leaf, max_depth, max_leaf_nodes, rmse
 
         for i in range(0, len(dt_max_depth_array)):
             for j in range(0, len(dt_max_leaf_nodes_array)):

@@ -132,16 +132,49 @@ Emissions of carbon dioxide (CO2) has been identified as one of the main drivers
 
 \blankline
 
+The analysis described in this report was performed following the schedule presented in Table \ref{ProjectPlan}, where week number refers to the week numbers of Semester 2 of University of Auckland's 2018 academic calendar.
+
+\begin{table}[htbp!]
+    \begin{center}
+        \begin{tabular}{ |c|c| } 
+        \hline
+        Time (Week No.) & Task \\ 
+        \hline
+        1 & Business Understanding \\
+        2 & Data Searching \\
+        3 & Data Exploration \\
+        4 & Data Preparation \\
+        5 & Data Mining \\
+        6 & Model Tuning \\
+        7 & Results Visualization \\
+        8 & Report Writing \\
+        \hline
+        \end{tabular}
+        \caption{Time plan for analysis}
+        \label{ProjectPlan}
+    \end{center}
+\end{table}
+
 % \pagebreak
 \section{Data understanding}
 
 \blankline
 
-The \href{https://www.worldbank.org/}{World Bank} contains comprehensive data sets on various macro-economic variables for a list of countries that are available for download. Historical data for some more developed countries is available further back in time compared to the others, while otherwise being reasonably comprehensive and complete. Global data of relevant variables such as population, urban population, CO2 emission, Gross Domestic Product (GDP) and forest area were obtained from the website, and each of them were available in independent comma separated (CSV) files with a common structure. \href{https://www.python.org/}{Python} and associated open source libraries such as \href{https://pandas.pydata.org/}{Pandas} are used in this instance for the analysis.
+The \href{https://www.worldbank.org/}{World Bank} contains comprehensive data sets on various macro-economic variables for a list of countries that are available for download. Historical data for some more developed countries is available further back in time compared to the others, while otherwise being reasonably comprehensive and complete. Global data of relevant variables such as population, urban population, CO2 emission, Gross Domestic Product (GDP) and forest area were obtained from the website, and each of them were available in independent comma separated (CSV) files with a common structure. Five CSV files where downloaded under the 'Climate Change' category under the \href{https://data.worldbank.org/indicator}{World Development Indicators} section of the World Bank website, which contains time series data for each of the following variables:
+
+\begin{itemize}
+    \item{Gross Domestic Product (GDP)}
+    \item{Total population}
+    \item{Urban population as a percentage of total}
+    \item{Forest area as a percentage of total land area}
+    \item{CO$_2$ emissions (tonnes)}
+\end{itemize}
+
+The available data for each of the variables are presented as annual figures from 1960 to 2017, for a list of "countries" that are listed in \texttt{countryTypeDict.txt} in the \textit{Code} directory. The data for each year is presented in columns, while each of the "countries" in the list occupies a row. This list of "countries" contain all countries that are recognized by the United Nations, as well as entries that represent a group of countries that share some common attributes, such as \texttt{Central Europe and the Baltic's} and \texttt{Caribbean small states}. These group entries are excluded from this analysis to avoid the overlap of statistics.
 
 \blankline
 
-The python codes that have been written for this analysis are stored in the \textit{Code} directory. Written functions are splitaccordingly into four different files:
+\href{https://www.python.org/}{Python} and associated open source libraries such as \href{https://pandas.pydata.org/}{Pandas} are used in this instance for the analysis. The python codes that have been written for this analysis are stored in the \textit{Code} directory. Written functions are split accordingly into four different files:
 
 \begin{itemize}
     \item \texttt{DataAnalysis.py} - Main executing code.
@@ -152,7 +185,9 @@ The python codes that have been written for this analysis are stored in the \tex
 
 These CSV files are loaded into dataframe objects with the \texttt{getCSVDF} function in \texttt{FitFunctions.py}. Dataframe objects are common in analysis work with programming languages such as \href{https://www.r-project.org/}{\texttt{R}} and Python, as they are much like ordinary tables that stores structured data in the rows and columns format, with capabilities of joining to other dataframes in multiple ways that are analogous to tables in relational databases. In Python they are loaded from the Pandas library, which also contains many associated functions that are useful in manipulating the dataframes during the analysis process. 
 
-While some of the datasets are complete up to the year 2017, others such as forest land percentage and CO$_{2}$ emissions only have complete data up to 2013. As the scope of this analysis does not require a time-dependent element, the data from the year 2013 will be used to train the models, while the 2014 set will be used to test the model.
+\blankline
+
+While some of the datasets are complete up to the year 2017, others such as forest land percentage and CO$_{2}$ emissions only have complete data up to 2014. Data in the years beyond 2014 are missing for some countries, particularly the smaller states. As the scope of this analysis does not require a time-dependent element, the data from the year 2013 will be used to train the models, while the 2014 set will be used to evaluate the model.
 
 \section{Data Preparation}
 
@@ -251,7 +286,27 @@ for i in range(0,len(dfList)):
 
 \blankline
 
-The group entities are then filtered out using the \texttt{setupAnalysisDF} function in \texttt{DFFunctions.py}. The predictors and targets for both the training data set and the testing data set are defined using the following lines in \texttt{DataAnalysis.py}:
+The group entities are then filtered out using the \texttt{setupAnalysisDF} function in \texttt{DFFunctions.py}. 
+
+\begin{verbatim}
+    def setupAnalysisDF(self, inDF, filter=True, countryType='Country'):
+
+        outDF = inDF.copy()
+
+        if (filter==True):
+            outDF = outDF[outDF['CountryType']==countryType]
+
+        outDF = outDF.dropna()
+        outDF = outDF.reset_index()
+        outDF = outDF.drop('index', axis=1)
+        # outDF = outDF.set_index('Country')
+
+        return outDF
+\end{verbatim}
+
+\blankline
+
+The predictors and targets for both the training data set and the testing data set are defined using the following lines in \texttt{DataAnalysis.py}:
 
 \begin{verbatim}
 train_predictors = trainDF.drop([
@@ -273,64 +328,303 @@ These basic transformations of the data set can be served as input to multiple a
 
 \section{Data-mining Algorithms and Methods Selection}
 
-This analysis with a target quantity of CO$_{2}$ emissions and several predictors such as GDP and population data falls under the \textbf{Supervised Learning} category of the machine learning domain. Methods such as \textbf{Linear Regression} and \textbf{Random Forest} are common methods that provides a good indication on the results of a supervised learning analysis.
+This analysis with a target prediction quantity of CO$_{2}$ emissions and several predictors such as GDP and population data falls under the \textbf{Supervised Learning} category of the machine learning domain. \textbf{Linear Regression} is a traditional statistical approach under this domain, which attempts to establish a linear relationship between the predictors and the target variable. \textbf{Decision Tree} and \textbf{Gradient Boosted Tree} are machine learning methods that are well known for their abilities in prediction models, which the model is built in general by recursively partitioning the data in a branching out tree manner using different attributes of the data, and the tree structure obtained in the end is used as a prediction model for new data input. These three approaches were performed and their results are used to determine which of them provides the highest level of accuracy for this data set.
 
 \section{Data Mining}
+\subsection{Linear Regression}
 
-Linear regression is performed with the training data, using tools from the \texttt{statsmodel} package, with the following results:
-
-\begin{verbatim}
-                            OLS Regression Results                            
-==============================================================================
-Dep. Variable:          atmosphereCO2   R-squared:                       0.845
-Model:                            OLS   Adj. R-squared:                  0.842
-Method:                 Least Squares   F-statistic:                     254.3
-Date:                Mon, 17 Sep 2018   Prob (F-statistic):           3.10e-74
-Time:                        15:58:59   Log-Likelihood:                -2701.3
-No. Observations:                 191   AIC:                             5413.
-Df Residuals:                     186   BIC:                             5429.
-Df Model:                           4                                         
-Covariance Type:            nonrobust                                         
-===================================================================================
-                      coef    std err          t      P>|t|      [0.025      0.975]
------------------------------------------------------------------------------------
-const           -5.449e+04   7.66e+04     -0.711      0.478   -2.06e+05    9.67e+04
-landForest       -248.3599   1040.340     -0.239      0.812   -2300.743    1804.023
-GDP              3.016e-07      2e-08     15.084      0.000    2.62e-07    3.41e-07
-populationTotal     0.0032      0.000     14.841      0.000       0.003       0.004
-populationUrban    -1.7645   1096.026     -0.002      0.999   -2164.005    2160.476
-==============================================================================
-Omnibus:                      140.525   Durbin-Watson:                   1.931
-Prob(Omnibus):                  0.000   Jarque-Bera (JB):            22618.124
-Skew:                           1.659   Prob(JB):                         0.00
-Kurtosis:                      56.208   Cond. No.                     4.86e+12
-==============================================================================
-\end{verbatim}
-
-The results are much less than optimal, as the standard errors for the coefficients obtained are in general quite large, with the exception of GDP. Random Forest is then performed with the training data as well, utilizing the random search method to first narrow down the range of appropriate hyper-parameters, then a grid search is performed to determine them more precisely. The results are as follows:
+Linear regression is performed with the training data, using the \texttt{LinearRegression} function from the \texttt{scikit-learn} library, in the function \texttt{FitLinearRegression} in \texttt{DataAnalysis.py}:
 
 \begin{verbatim}
-Model best parameters:
-{
-'n_estimators': 800, 
-'min_samples_split': 10, 
-'min_samples_leaf': 1, 
-'max_features': 'auto', 
-'max_depth': 20, 
-'bootstrap': False
-}
-Model Performance
-Average Error: 56479.7575.
-Accuracy = 39.85%.
-Model Performance
-Average Error: 75334.7533.
-Accuracy = 48.96%.
-Improvement of 22.87%.
+def FitLinearRegression(self, train_predictors, \
+    test_predictors, train_target, test_target):
+
+    regressor = LinearRegression()
+    regressor.fit(train_predictors, train_target)
+
+    print('Intercept: \n', regressor.intercept_)
+    print('Coefficients: \n', regressor.coef_)
+
+    print('Linear Regression R squared (train)": %.4f' \
+        % regressor.score(train_predictors, train_target))
+
+    y_pred = regressor.predict(test_predictors)
+    print('Linear Regression R squared (test)": %.4f' \
+        % regressor.score(test_predictors, test_target))
+
+    lin_mse = mean_squared_error(y_pred, test_target)
+    lin_rmse = np.sqrt(lin_mse)
+    print('Linear Regression RMSE: %.4f' % lin_rmse)
+
+    lin_mae = mean_absolute_error(y_pred, test_target)
+    print('Linear Regression MAE: %.4f' % lin_mae)
+
+    return y_pred
 \end{verbatim}
+
+The following results were obtained for the training data set:
+
+\begin{verbatim}
+('Intercept: \n', array([-54489.00320095]))
+('Coefficients: \n', array([[-2.48359931e+02,  3.01646688e-07,  3.17327470e-03,
+        -1.76454852e+00]]))
+Linear Regression R squared (train)": 0.8454
+\end{verbatim}
+
+The coefficients for each of the predictors are presented in the following table:
+
+\begin{table}[htbp!]
+    \begin{center}
+        \begin{tabular}{ |c|c| } 
+        \hline
+        Predictor & Coefficient (3d.p.) \\ 
+        \hline
+        \texttt{landForest} & -248.36\\
+        \texttt{populationTotal} & 0.003 \\
+        \texttt{GDP} & 3.016$\times$10$^{-7}$ \\
+        \texttt{populationUrban} & -1.765 \\
+        \hline
+        \end{tabular}
+        \caption{Coefficients obtained from Linear Regression analysis.}
+        \label{LinearRegressionCoeffs}
+    \end{center}
+\end{table}
+
+With an $R^{2}$ values of 0.845, the results suggests reasonable validity of the coefficients obtained. It is not surprising to find such a big negative correlation (-248.36) for forest percentage of the total land area, and and a reasonable relationship with the urban percentage of the total population. It is however a little interesting to find almost no correlation between the amount of CO2 emissions and total population as well as GDP.
+
+The performance of the obtained linear regression model on the test data set is as follows:
+
+\begin{verbatim}
+Linear Regression R squared (test)": 0.8576
+Linear Regression RMSE: 326331.0470
+\end{verbatim}
+
+The $R^{2}$ value for the test data is higher that the one obtained for the training data. This result of the obtain model on the test data indicates that its predictions are even closer to the actual values in the test data set compared to the training data set, which provide confidence on the potential of overfitting issues on the obtained model.
+
+\subsection{Decision Tree}
+
+One of the main differences between traditional statistical approaches and machine learning methods is the concept of training. Machine learning models such as \textbf{Decision Trees} require preset hyper-parameters as boundary conditions, and training of the model essentially means fine tuning of these hyper-parameters to match the predictors optimally with the target response. As an example, the parameter \texttt{min$\_$samples$\_$leaf} that can be set for the \texttt{DecisionTreeRegressor} function determines the minimum number of data points in a partition. This prevents the algorithm to further divide the partition if the size is below this threshold. The \texttt{DecisionTreeRegressor} tool provided by the \texttt{scikit-learn} package for regression analysis using decision trees contains a set of default parameters is none is provided when it is executed.
+
+\begin{itemize}
+    \item{\textbf{\texttt{max$\_$depth}}: The maximum depth of the tree.}
+    \item{\textbf{\texttt{max$\_$leaf$\_$nodes}}: Grow a tree with \texttt{max$\_$leaf$\_$nodes} in best-first fashion. Best nodes are defined as relative reduction in impurity}
+    \item{\textbf{\texttt{min$\_$samples$\_$leaf}}: The minimum number of samples required to be at a leaf node. A split point at any depth will only be considered if it leaves at least \texttt{min$\_$samples$\_$leaf} training samples in each of the left and right branches.}
+\end{itemize}
+
+An iteration with this default setting is performed, while a set of hyper-parameters are also used for further iterations in search of the optimal model:
+
+\begin{verbatim}
+dt_max_depth_array = [10,20,30]
+dt_max_leaf_nodes_array = [32,34,36]
+dt_min_samples_leaf_array = [1,2,3]
+\end{verbatim}
+
+These selections of parameters are estimated using the default values, and are iterated through as inputs to the decision tree algorithm to determine the combination for the optimal model:
+
+\begin{verbatim}
+dt_results_array = [] # min_samples_leaf, max_depth, max_leaf_nodes, rmse
+
+for i in range(0, len(dt_max_depth_array)):
+    for j in range(0, len(dt_max_leaf_nodes_array)):
+        for k in range(0, len(dt_min_samples_leaf_array)):
+            dt_max_depth = dt_max_depth_array[i]
+            dt_max_leaf_nodes = dt_max_leaf_nodes_array[j]
+            dt_min_samples_leaf = dt_min_samples_leaf_array[k]
+
+            dt_params = {
+                "max_depth":dt_max_depth,
+                "max_leaf_nodes":dt_max_leaf_nodes,
+                "min_samples_leaf":dt_min_samples_leaf
+            }
+
+            dt_results, dt_predictions = self.FitDecisionTree(train_predictors, \
+                test_predictors, train_target, test_target, dt_params)
+
+            dt_results_array.append(dt_results)
+
+            del dt_max_depth
+            del dt_max_leaf_nodes
+            del dt_min_samples_leaf
+            del dt_params
+            del dt_results
+\end{verbatim}
+
+where the \texttt{FitDecisionTree} function is as follows, containing the \texttt{DecisionTreeRegressor} from \texttt{scikit-learn}:
+
+\begin{verbatim}
+def FitDecisionTree(self, train_predictors, test_predictors, \
+    train_target, test_target, params={}):
+
+    if bool(params):
+        dt = DecisionTreeRegressor(random_state=42, \
+            max_depth=params["max_depth"], \
+            max_leaf_nodes = params["max_leaf_nodes"], \
+            min_samples_leaf = params["min_samples_leaf"])
+    else:
+        dt = DecisionTreeRegressor(random_state=42)
+
+    dt_model = dt.fit(train_predictors, train_target.values.ravel())
+
+    dt_rmse, dt_predictions = self.evaluateModel(model=dt_model, \
+        test_predictors=test_predictors, test_target=test_target, \
+        modelName='Decision Tree')
+
+    dt_paramMap = dt_model.get_params()
+
+    for key in dt_paramMap.keys():
+        # print(key, dt_paramMap[key])
+
+        if key in ['min_samples_leaf']:
+            min_samples_leaf = dt_paramMap[key]
+        if key in ['max_depth']:
+            max_depth = dt_paramMap[key]
+        if key in ['max_leaf_nodes']:
+            max_leaf_nodes = dt_paramMap[key]
+        if bool(params)==False:
+            if key in ['min_samples_leaf', 'max_depth', 'max_leaf_nodes']:
+                print(key, dt_paramMap[key])
+
+    return [min_samples_leaf, max_depth, max_leaf_nodes, dt_rmse], dt_predictions
+\end{verbatim}
+
+A small function \texttt{evaluateModel} that was used in the code above was written to evaluate the model with test data:
+
+\begin{verbatim}
+def evaluateModel(self, model, test_predictors, test_target, modelName=''):
+
+    y_pred = model.predict(test_predictors)
+    mse = mean_squared_error(y_pred, test_target)
+    rmse = np.sqrt(mse)
+
+    return float(rmse), y_pred
+\end{verbatim}
+
+The default parameters provides a model that results with an RMSE value of 37640.57 when evaluated with the test data set:
+
+\begin{verbatim}
+Fitting with default parameters...
+('max_leaf_nodes', None)
+('min_samples_leaf', 1)
+('max_depth', None)
+[1, None, None, 37640.574479420306]
+\end{verbatim}
+
+After iterating through the hyper-parameters presented above, the optimal set is determined as the following, resulting with the RMSE value of 32136.42.
+
+\begin{verbatim}
+Fitting with max_depth = 10, max_leaf_nodes = 36, min_samples_leaf = 1 ...
+[1, 10, 36, 32136.42254701433]
+\end{verbatim}
+
+\subsection{Gradient Boosted Tree}
+
+A similar approach is used with the \textbf{Gradient Boosted Tree} algorithm, which has these default hyper-parameters:
+
+\begin{itemize}
+    \item{\textbf{\texttt{max$\_$depth}}: The maximum depth of the tree.}
+    \item{\textbf{\texttt{min$\_$samples$\_$leaf}}: The minimum number of samples required to be at a leaf node. A split point at any depth will only be considered if it leaves at least \texttt{min$\_$samples$\_$leaf} training samples in each of the left and right branches.}
+    \item{\textbf{\texttt{learning$\_$rate}}: learning rate shrinks the contribution of each tree by \texttt{learning$\_$rate}}
+    \item{\textbf{\texttt{subsample}}: The fraction of samples to be used for fitting the individual base learners.}
+\end{itemize}
+which the default parameters have provided the following result:
+
+\begin{verbatim}
+Fitting with default parameters...
+('subsample', 1.0)
+('learning_rate', 0.1)
+('min_samples_leaf', 1)
+('max_depth', 3)
+[1, 3, 0.1, 1.0, 47003.42526128258]
+\end{verbatim}
+
+A set of estimated hyper-parameters is also estimated from the default values, for the purpose of further refining the model:
+
+\begin{verbatim}
+gbt_max_depth_array = [10,20,30]
+gbt_min_samples_leaf_array = [1,2,3]
+gbt_learning_rate_array = [0.05, 0.1, 0.2]
+gbt_subsample_array = [0.4, 0.8, 1.0]
+\end{verbatim}
+
+These are iterated though in the following fashion:
+
+\begin{verbatim}
+        # [min_samples_leaf, max_depth, learning_rate, subsample]
+        gbt_results_array = [] 
+
+        for i in range(0, len(gbt_max_depth_array)):
+            for k in range(0, len(gbt_min_samples_leaf_array)):
+                for m in range(0, len(gbt_learning_rate_array)):
+                    for n in range(0, len(gbt_subsample_array)):
+                        gbt_max_depth = gbt_max_depth_array[i]
+                        gbt_min_samples_leaf = gbt_min_samples_leaf_array[k]
+                        gbt_learning_rate = gbt_learning_rate_array[m]
+                        gbt_subsample = gbt_subsample_array[n]
+
+                        gbt_params = {
+                            "max_depth":gbt_max_depth,
+                            "min_samples_leaf":gbt_min_samples_leaf,
+                            "learning_rate":gbt_learning_rate,
+                            "subsample":gbt_subsample
+                        }
+
+                        gbt_results, gbt_predictions = self.FitGradientBoostedTree(\
+                            train_predictors, test_predictors, train_target, \
+                            test_target, gbt_params)
+                        gbt_results_array.append(gbt_results)
+
+                        del gbt_max_depth
+                        del gbt_min_samples_leaf
+                        del gbt_learning_rate
+                        del gbt_subsample
+                        del gbt_params
+\end{verbatim}
+
+where \texttt{FitGradientBoostedTree} in the \texttt{for} loop contains the \texttt{GBTRegressor} function provided by scikit-learn to perform the Gradient Boosted Tree algorithm:
+
+\begin{verbatim}
+
+        if bool(params):
+            gbt = ensemble.GradientBoostingRegressor(random_state=42, \
+                max_depth = params["max_depth"], \
+                min_samples_leaf = params["min_samples_leaf"], \
+                learning_rate = params["learning_rate"], \
+                subsample = params["subsample"])
+        else:
+            gbt = ensemble.GradientBoostingRegressor(random_state=42)
+
+        gbt_model = gbt.fit(train_predictors, train_target.values.ravel())
+
+        gbt_rmse, gbt_predictions = self.evaluateModel(model=gbt_model, \
+            test_predictors=test_predictors, test_target=test_target, \
+            modelName='Gradient Boosted Tree')
+\end{verbatim}
+
+This involved running the algorithm 81 times with all unique combinations of the hyper-parameters, which the optimal combination with its associated RMSE value is as follows:
+
+\begin{verbatim}
+Fitting with maxDepth = 10, maxBins = 36, minInstancesPerNode = 1 ...
+maxIter = 25, stepSize = 0.05, subsamplingRate = 1.0 ...
+Gradient Boosted Trees Root Mean Squared Error (RMSE) on test data = 37921.1
+\end{verbatim}
+
+This further fine tuning of hyper-parameters has decreased the RMSE value from 47003.4 to 37921.1, representing a higher prediction accuracy compared to the default parameters.
 
 \section{Interpretation}
 
-Figure \ref{fig:atmosphereCO2_test_residue} shows the comparison of results between the two approaches, it is a plot of residues on the test data set between the values predicted by respective models and the actual data values. The x axis displays the indicies of all of the countries to avoid confusion, and it can be observed that in general the predicted values from the trained Random Forest model is closer to the actual values compared to the linear regression approach.
+% Figure \ref{fig:atmosphereCO2_test_residue} shows the comparison of results between the two approaches, it is a plot of residues on the test data set between the values predicted by respective models and the actual data values. The x axis displays the indicies of all of the countries to avoid confusion, and it can be observed that in general the predicted values from the trained Random Forest model is closer to the actual values compared to the linear regression approach.
+
+% \begin{figure}[!htbp]
+%     \begin{center}
+%         \includegraphics[width=\textwidth]{../Plots/atmosphereCO2_test_residue.png}
+%         \caption{Comparison between Linear Regression and Random Forest.}
+%         \label{fig:atmosphereCO2_test_residue}
+%     \end{center}
+% \end{figure}
+
+% Following on from this work, more models such as Neural Networks or XGBoost can be examined to determine whether a more precise prediction can be obtained, as well as attempting to drop some predictors in the linear regression approach to see if it can perform better.
+
+Figure \ref{fig:atmosphereCO2_test_residue} shows the comparison of results between the three approaches, it is a plot of residues on the test data set between the values predicted by respective models and the actual data values. The x axis displays the indices of all of the countries to avoid confusion, and it can be observed that in general the predicted values from the trained Decision Tree and Gradient Boosted Tree models are closer to the actual values compared to the linear regression approach.
 
 \begin{figure}[!htbp]
     \begin{center}
@@ -340,6 +634,44 @@ Figure \ref{fig:atmosphereCO2_test_residue} shows the comparison of results betw
     \end{center}
 \end{figure}
 
-Following on from this work, more models such as Neural Networks or XGBoost can be examined to determine whether a more precise prediction can be obtained, as well as attempting to drop some predictors in the linear regression approach to see if it can perform better.
+A summary of performance comparison between the tested models are presented in Table \ref{PerformanceComp}.
+
+\begin{table}[htbp!]
+    \begin{center}
+        \begin{tabular}{ |c|c| } 
+        \hline
+        Model & Root Mean Squared Error \\ 
+        \hline
+        Linear Regression & 326331 \\
+        Decision Tree & 32136.4 \\
+        Gradient Boosted Tree & 30726.5 \\
+        \hline
+        \end{tabular}
+        \caption{Comparison of model performance using Root Mean Squared Error}
+        \label{PerformanceComp}
+    \end{center}
+\end{table}
+
+This comparison of performance shows the both of the machine learning methods produce predictions that are more accurate than the linear regression method by an order of magnitude, while Gradient Boosted Tree, provide the most accurate prediction out of all three. Figures \ref{fig:atmosphereCO2_test_GBT_MAPE} and \ref{fig:atmosphereCO2_test_DT_MAPE} respectively show the percentage error for Gradient Boosted Tree and Decision Tree methods, where the noticeable difference in accuracy between the two methods are displayed.
+
+\begin{figure}[!htbp]
+    \begin{center}
+        \includegraphics[width=\textwidth]{../Plots/atmosphereCO2_test_GBT_MAPE.png}
+        \caption{Percentage Error from the Gradient Boosted Tree analysis.}
+        \label{fig:atmosphereCO2_test_GBT_MAPE}
+    \end{center}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \begin{center}
+        \includegraphics[width=\textwidth]{../Plots/atmosphereCO2_test_DT_MAPE.png}
+        \caption{Percentage Error from the Decision Tree analysis.}
+        \label{fig:atmosphereCO2_test_DT_MAPE}
+    \end{center}
+\end{figure}
+
+It can be seen that most of the predictions made by the tuned Gradient Boosted Tree algorithm are within one percent accurancy, with nothing surpassing four percent. Aside from achieving the best performance out of the three methods, we can also conclude that it provides quite a good level of prediction accuracy for the CO$_{2}$ emissions with the selected set of predictors. Following on from this work, more models such as Neural Networks or XGBoost can be examined to determine whether a more precise prediction can be obtained, as well as attempting to drop some predictors in the linear regression approach to see if it can perform better.
+
+All data and source codes of this analysis can be found at \href{https://github.com/jasonyctam/WorldBankClimateChange}{this Github repository}.
 
 \end{document}
