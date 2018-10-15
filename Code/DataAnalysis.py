@@ -10,25 +10,17 @@ import datetime as dt
 import numpy as np
 import ast # For converting string to dictionary
 
-# from sklearn import datasets, linear_model
-# import statsmodels.api as sm
-
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
 
 from sklearn.tree import DecisionTreeRegressor
 
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
 
 from sklearn import ensemble
 from sklearn.ensemble import GradientBoostingRegressor
-
-from sklearn.preprocessing import StandardScaler
-from sklearn.neural_network import MLPRegressor
-
 
 ###################################################################
 ###################################################################
@@ -90,7 +82,7 @@ class DataAnalysis():
             testSetupDF[dfColumnHeaders[i]] = tempDF['2014']
 
         trainDF = self.DFFunc.setupAnalysisDF(trainSetupDF)
-        # trainDF = self.DFFunc.setupAnalysisDF(trainSetupDF, countryType='Group')
+
         print(trainDF.shape)
         print(trainDF.tail(5))
 
@@ -104,30 +96,46 @@ class DataAnalysis():
 
         ### Linear Regression
 
-        # self.FitLinearRegression(train_predictors, test_predictors, train_target, test_target)
-
-        ### Random Forest
-
-        # self.FitRandomForest(train_predictors, test_predictors, train_target, test_target)
-
-        # rf = best_grid
+        lr_predictions = self.FitLinearRegression(train_predictors, test_predictors, train_target, test_target)
 
         ### Decision Tree
+
         dt_predictions = self.RunDecisionTree(train_predictors, test_predictors, train_target, test_target)
 
         ### Gradient Boosted Tree
 
-        # self.FitGradientBoostedTree(train_predictors, test_predictors, train_target, test_target)
+        gbt_predictions = self.RunGradientBoostedTree(train_predictors, test_predictors, train_target, test_target)
 
         resultsDF = test_target.copy()
+        resultsDF['lr_predictions'] = lr_predictions
+        resultsDF['lr_res'] = resultsDF['lr_predictions'] - resultsDF['atmosphereCO2']
+        resultsDF['lr_res_sqrd'] = resultsDF['lr_res'].apply(lambda x: math.pow(x,2))
+        resultsDF['lr_mape'] = resultsDF['lr_res']/resultsDF['atmosphereCO2']
+
         resultsDF['dt_predictions'] = dt_predictions
         resultsDF['dt_res'] = resultsDF['dt_predictions'] - resultsDF['atmosphereCO2']
         resultsDF['dt_res_sqrd'] = resultsDF['dt_res'].apply(lambda x: math.pow(x,2))
+        resultsDF['dt_mape'] = resultsDF['dt_res']/resultsDF['atmosphereCO2']
+
+        resultsDF['gbt_predictions'] = gbt_predictions
+        resultsDF['gbt_res'] = resultsDF['gbt_predictions'] - resultsDF['atmosphereCO2']
+        resultsDF['gbt_res_sqrd'] = resultsDF['gbt_res'].apply(lambda x: math.pow(x,2))
+        resultsDF['gbt_mape'] = resultsDF['gbt_res']/resultsDF['atmosphereCO2']
+
         print(resultsDF.head(5))
+        print(math.pow(resultsDF['lr_res_sqrd'].mean(),0.5))
         print(math.pow(resultsDF['dt_res_sqrd'].mean(),0.5))
+        print(math.pow(resultsDF['gbt_res_sqrd'].mean(),0.5))
 
+        # self.plotData.plotResultGraph(resultsDF.index.values, [resultsDF['lr_res'], resultsDF['dt_res'], resultsDF['gbt_res']], title="atmosphereCO2 2014", xlabel="Country", ylabel="atmosphereCO2", legendLabel=["LR_test_Residue", "DT_test_Residue", "GBT_test_Residue"], outputFileName="atmosphereCO2_test_residue.png", tilt=False, xTickRotation=30)
 
- 
+        # self.plotData.plotResultGraph(resultsDF.index.values, [resultsDF['dt_mape'], resultsDF['gbt_mape']], title="atmosphereCO2 2014", xlabel="Country", ylabel="Percentage", legendLabel=["DT_test_MAPE", "GBT_test_MAPE"], outputFileName="atmosphereCO2_test_MAPE.png", tilt=False, xTickRotation=30)
+
+        # self.plotData.plotResultGraph(resultsDF.index.values, [resultsDF['dt_mape']], title="atmosphereCO2 2014", xlabel="Country", ylabel="Percentage", legendLabel=["DT_test_MAPE"], outputFileName="atmosphereCO2_test_DT_MAPE.png", tilt=False, xTickRotation=30)
+
+        # self.plotData.plotResultGraph(resultsDF.index.values, [resultsDF['gbt_mape']], title="atmosphereCO2 2014", xlabel="Country", ylabel="Percentage", legendLabel=["GBT_test_MAPE"], outputFileName="atmosphereCO2_test_GBT_MAPE.png", tilt=False, xTickRotation=30)
+
+        # plt.show()
 
         return
 
@@ -152,7 +160,7 @@ class DataAnalysis():
         lin_mae = mean_absolute_error(y_pred, test_target)
         print('Linear Regression MAE: %.4f' % lin_mae)
 
-        return
+        return y_pred
 
 ###################################################################
 ###################################################################
@@ -222,8 +230,7 @@ class DataAnalysis():
             print("Fitting with default parameters...")
             dt = DecisionTreeRegressor(random_state=42)
 
-
-        dt_model = dt.fit(train_predictors, train_target)
+        dt_model = dt.fit(train_predictors, train_target.values.ravel())
 
         dt_rmse, dt_predictions = self.evaluateModel(model=dt_model, test_predictors=test_predictors, test_target=test_target, modelName='Decision Tree')
 
@@ -249,71 +256,111 @@ class DataAnalysis():
 ###################################################################
 ###################################################################
 
-    def FitGradientBoostedTree(self, train_predictors, test_predictors, train_target, test_target):
+
+    def RunGradientBoostedTree(self, train_predictors, test_predictors, train_target, test_target):
 
         # loss=’ls’,  learning_rate=0.1, n_estimators=100, subsample=1.0, criterion=’friedman_mse’, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_depth=3, min_impurity_decrease=0.0, min_impurity_split=None, init=None, random_state=None, max_features=None, alpha=0.9, verbose=0, max_leaf_nodes=None, warm_start=False, presort=’auto’, validation_fraction=0.1, n_iter_no_change=None, tol=0.0001
+
+        print("Running Gradient Boosted Tree.....")
+
+        # Base Model
+
+        base_results, base_modelpred = self.FitGradientBoostedTree(train_predictors, test_predictors, train_target, test_target)
+
+        # Default parameters
+        print(base_results)
+
+        # ('subsample', 1.0)
+        # ('learning_rate', 0.1)
+        # ('min_samples_leaf', 1)
+        # ('max_depth', 3)
+        # [1, 3, 0.1, 1.0, 47003.42526128258]
+
 
         ## Fine tune hyperparameters with Randomized Search
 
         # Swap for these to running the hyper-parameter search again
-        # gbt_maxDepth_array = [10,20,30]
-        # gbt_minInstancesPerNode_array = [1,2,3]
-        # gbt_maxIter_array = [20, 25, 30]
-        # gbt_stepSize_array = [0.05, 0.1, 0.2]
-        # gbt_subsamplingRate_array = [0.4, 0.8, 1.0]
+        # gbt_max_depth_array = [10,20,30]
+        # gbt_min_samples_leaf_array = [1,2,3]
+        # gbt_learning_rate_array = [0.05, 0.1, 0.2]
+        # gbt_subsample_array = [0.4, 0.8, 1.0]
 
-        # Number of trees in random forest
-        n_estimators = [int(x) for x in np.linspace(start = 20, stop = 200, num = 10)]
+        # Best parameters
+        # 1	10	0.1	1	30726.5481753722
+        gbt_max_depth_array = [10]
+        gbt_min_samples_leaf_array = [1]
+        gbt_learning_rate_array = [0.1]
+        gbt_subsample_array = [1.0]
 
-        # Number of features to consider at every split
-        max_features = ['auto', 'sqrt']
+        gbt_results_array = [] # [min_samples_leaf, max_depth, learning_rate, subsample]
 
-        # Maximum number of levels in tree
-        max_depth = [int(x) for x in np.linspace(10, 3, num = 3)]
-        max_depth.append(None)
+        for i in range(0, len(gbt_max_depth_array)):
+            for k in range(0, len(gbt_min_samples_leaf_array)):
+                for m in range(0, len(gbt_learning_rate_array)):
+                    for n in range(0, len(gbt_subsample_array)):
+                        gbt_max_depth = gbt_max_depth_array[i]
+                        gbt_min_samples_leaf = gbt_min_samples_leaf_array[k]
+                        gbt_learning_rate = gbt_learning_rate_array[m]
+                        gbt_subsample = gbt_subsample_array[n]
 
-        # Minimum number of samples required to split a node
-        min_samples_split = [2, 4, 6, 8, 10, 12]
+                        gbt_params = {
+                            "max_depth":gbt_max_depth,
+                            "min_samples_leaf":gbt_min_samples_leaf,
+                            "learning_rate":gbt_learning_rate,
+                            "subsample":gbt_subsample
+                        }
 
-        # Minimum number of samples required at each leaf node
-        min_samples_leaf = [1, 2, 3, 4, 5]
+                        gbt_results, gbt_predictions = self.FitGradientBoostedTree(train_predictors, test_predictors, train_target, test_target, gbt_params)
+                        gbt_results_array.append(gbt_results)
 
+                        del gbt_max_depth
+                        del gbt_min_samples_leaf
+                        del gbt_learning_rate
+                        del gbt_subsample
+                        del gbt_params
 
-        # Create the random grid
-        gbt_grid = {'n_estimators': n_estimators,
-                    'max_features': max_features,
-                    'max_depth': max_depth,
-                    'min_samples_split': min_samples_split,
-                    'min_samples_leaf': min_samples_leaf}
+        for i in range(0, len(gbt_results_array)):
 
-        # Base Model
+            print(gbt_results_array[i])
 
-        base_model = self.FitFunc.FitGradientBoostedTree(train_predictors=train_predictors, train_target=train_target)
-        base_accuracy = self.FitFunc.evaluate(base_model, test_predictors, test_target.values.ravel())
+        return gbt_predictions
 
-        ## Random Search
-        gbt_random = self.FitFunc.FitRandomForest(paramGrid=gbt_grid, train_predictors=train_predictors, train_target=train_target)
-        best_random = gbt_random.best_estimator_
-        random_accuracy = self.FitFunc.evaluate(best_random, test_predictors, test_target.values.ravel())
-        print('Improvement of {:0.2f}%.'.format( 100 * (random_accuracy - base_accuracy) / base_accuracy))
+###################################################################
+###################################################################
 
-        model = ensemble.GradientBoostingRegressor()
-        model.fit(train_predictors, train_target)
+    def FitGradientBoostedTree(self, train_predictors, test_predictors, train_target, test_target, params={}):
 
-        print('Gradient Boosting R squared": %.4f' % model.score(test_predictors, test_target))
+        # loss=’ls’,  learning_rate=0.1, n_estimators=100, subsample=1.0, criterion=’friedman_mse’, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_depth=3, min_impurity_decrease=0.0, min_impurity_split=None, init=None, random_state=None, max_features=None, alpha=0.9, verbose=0, max_leaf_nodes=None, warm_start=False, presort=’auto’, validation_fraction=0.1, n_iter_no_change=None, tol=0.0001
 
-        y_pred = model.predict(test_predictors)
-        model_mse = mean_squared_error(y_pred, test_target)
-        model_rmse = np.sqrt(model_mse)
-        print('Gradient Boosting RMSE: %.4f' % model_rmse)
+        if bool(params):
+            print("Fitting with max_depth = " + str(params["max_depth"]) + ", min_samples_leaf = " + str(params["min_samples_leaf"]) + ", learning_rate = " + str(params["learning_rate"]) + ", subsample = " + str(params["subsample"]) + " ...")
+            gbt = ensemble.GradientBoostingRegressor(random_state=42, max_depth=params["max_depth"], min_samples_leaf = params["min_samples_leaf"], learning_rate = params["learning_rate"], subsample = params["subsample"])
+        else:
+            print("Fitting with default parameters...")
+            gbt = ensemble.GradientBoostingRegressor(random_state=42)
 
-        feature_labels = np.array(['landForest', 'GDP', 'populationTotal', 'populationUrban'])
-        importance = model.feature_importances_
-        feature_indexes_by_importance = importance.argsort()
-        for index in feature_indexes_by_importance:
-            print('{}-{:.2f}%'.format(feature_labels[index], (importance[index] *100.0)))
+        gbt_model = gbt.fit(train_predictors, train_target.values.ravel())
 
-        return
+        gbt_rmse, gbt_predictions = self.evaluateModel(model=gbt_model, test_predictors=test_predictors, test_target=test_target, modelName='Gradient Boosted Tree')
+
+        gbt_paramMap = gbt_model.get_params()
+
+        for key in gbt_paramMap.keys():
+            # print(key, dt_paramMap[key])
+
+            if key in ['min_samples_leaf']:
+                min_samples_leaf = gbt_paramMap[key]
+            if key in ['max_depth']:
+                max_depth = gbt_paramMap[key]
+            if key in ['learning_rate']:
+                learning_rate = gbt_paramMap[key]
+            if key in ['subsample']:
+                subsample = gbt_paramMap[key]
+            if bool(params)==False:
+                if key in ['min_samples_leaf', 'max_depth', 'learning_rate', 'subsample']:
+                    print(key, gbt_paramMap[key])
+
+        return [min_samples_leaf, max_depth, learning_rate, subsample, gbt_rmse], gbt_predictions
 
 ###################################################################
 ###################################################################
@@ -329,142 +376,6 @@ class DataAnalysis():
 
 ###################################################################
 ###################################################################
-
-    def FitRandomForest(self, train_predictors, test_predictors, train_target, test_target):
-
-        # forest_reg = RandomForestRegressor(random_state=42)
-        # forest_reg.fit(train_predictors, train_target)
-
-        # print('Random Forest R squared": %.4f' % forest_reg.score(test_predictors, test_target))
-
-        # y_pred = forest_reg.predict(test_predictors)
-        # forest_mse = mean_squared_error(y_pred, test_target)
-        # forest_rmse = np.sqrt(forest_mse)
-        # print('Random Forest RMSE: %.4f' % forest_rmse)
-
-        # print("Model best parameters:")
-        # print(forest_reg.best_params_)
-
-        ## Fine tune hyperparameters with Randomized Search
-
-        # # Number of features to consider at every split
-        # max_features = ['auto', 'sqrt']
-
-        # # Maximum number of levels in tree
-        # max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
-        # max_depth.append(None)
-
-        # # Minimum number of samples required to split a node
-        # min_samples_split = [2, 4, 6, 8, 10, 12]
-
-        # # Minimum number of samples required at each leaf node
-        # min_samples_leaf = [1, 2, 3, 4, 5]
-
-        # # Method of selecting samples for training each tree
-        # bootstrap = [True, False]
-
-        # # Create the random grid
-        # random_grid = {'n_estimators': n_estimators,
-        #             'max_features': max_features,
-        #             'max_depth': max_depth,
-        #             'min_samples_split': min_samples_split,
-        #             'min_samples_leaf': min_samples_leaf,
-        #             'bootstrap': bootstrap}
-
-        # Base Params
-        # ('bootstrap', True)
-        # ('min_samples_leaf', 1)
-        # ('n_estimators', 10)
-        # ('min_samples_split', 2)
-
-        # Number of trees in random forest
-        n_estimators = [int(x) for x in np.linspace(start = 5, stop = 50, num = 10)]
-
-        # Minimum number of samples required to split a node
-        min_samples_split = [2, 4, 6, 8, 10, 12]
-
-        # Minimum number of samples required at each leaf node
-        min_samples_leaf = [1, 2, 3, 4, 5]
-
-        # Method of selecting samples for training each tree
-        bootstrap = [True, False]
-
-        # Create the random grid
-        random_grid = {'n_estimators': n_estimators,
-                    'min_samples_split': min_samples_split,
-                    'min_samples_leaf': min_samples_leaf,
-                    'bootstrap': bootstrap}
-
-        # Base Model
-
-        base_model = self.FitFunc.FitRandomForest(train_predictors=train_predictors, train_target=train_target)
-        base_accuracy = self.FitFunc.evaluate(base_model, test_predictors, test_target.values.ravel())
-        # base_params = ast.literal_eval(base_model.get_params())
-        base_params = base_model.get_params()
-        print('Parameters for the base model:')
-        for key in base_params.keys():
-            print(key, base_params[key])
-
-        ## Random Search
-        rf_random = self.FitFunc.FitRandomForest(paramGrid=random_grid, train_predictors=train_predictors, train_target=train_target)
-        best_random = rf_random.best_estimator_
-        random_accuracy = self.FitFunc.evaluate(best_random, test_predictors, test_target.values.ravel())
-        print('Improvement of {:0.2f}%.'.format( 100 * (random_accuracy - base_accuracy) / base_accuracy))
-
-        # Model best parameters:
-        # {'bootstrap': False, 'min_samples_leaf': 1, 'n_estimators': 1400, 'max_features': 'sqrt', 'min_samples_split': 10, 'max_depth': 50}
-        # Model Performance
-        # Average Error: 49455.5544.
-        # Accuracy = -177.44%.
-        # Improvement of -510.95%.
-
-        # Model best parameters:
-        # {'bootstrap': False, 'min_samples_leaf': 2, 'n_estimators': 60, 'max_features': 'sqrt', 'min_samples_split': 12, 'max_depth': 10}
-        # Model Performance
-        # Average Error: 60940.7022.
-        # Accuracy = -240.68%.
-        # Improvement of -657.42%.
-
-
-
-        ## Fine tune hyperparameters with Grid Search
-
-        # param_grid = {
-        #     'n_estimators': [400, 600, 800, 1000, 1200],
-        #     'max_features': ['auto'],
-        #     'min_samples_split': [8, 10, 12],
-        #     'min_samples_leaf': [1, 2, 3],
-        #     'max_depth': [60, 70, 80, 90, 100],
-        #     'bootstrap': [False]
-        # }
-
-        # Create the param grid
-        param_grid = {'n_estimators': n_estimators,
-                    'min_samples_split': min_samples_split,
-                    'min_samples_leaf': min_samples_leaf,
-                    'bootstrap': bootstrap}
-
-        grid_search = self.FitFunc.FitRandomForest(paramGrid=param_grid, train_predictors=train_predictors, train_target=train_target, searchType="Grid")
-        best_grid = grid_search.best_estimator_
-        grid_accuracy = self.FitFunc.evaluate(best_grid, test_predictors, test_target.values.ravel())
-
-        print('Improvement of {:0.2f}%.'.format( 100 * (grid_accuracy - base_accuracy) / base_accuracy))
-
-        # Model best parameters:
-        # {'bootstrap': False, 'min_samples_leaf': 2, 'n_estimators': 400, 'min_samples_split': 10, 'max_features': 'auto', 'max_depth': 60}
-        # Model Performance
-        # Average Error: 65963.5829.
-        # Accuracy = 43.37%.
-        # Improvement of 0.44%.
-        # Time elapsed: 571.5303890705109
-
-
-        return
-
-
-###################################################################
-###################################################################
-
 
 if __name__ == "__main__":
 
